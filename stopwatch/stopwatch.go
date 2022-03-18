@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+type Duration = time.Duration
+
 func New(options ...Option) *StopWatch {
 	p := &StopWatch{}
 
@@ -14,46 +16,15 @@ func New(options ...Option) *StopWatch {
 	if opts.StepCacheCap > 0 {
 		p.durList = make([]WatchDuration, 0, opts.StepCacheCap)
 	}
-	if opts.AutoStart {
-		p.Start()
-	}
+	p.Start()
+
 	return p
-}
-
-type WatchDuration struct {
-	name  string
-	dur   time.Duration
-	times uint
-}
-
-func (d *WatchDuration) Init(name string, dur time.Duration, times uint) {
-	if times <= 0 { //0 is forbinden
-		times = 1
-	}
-	d.name = name
-	d.dur = dur
-	d.times = times
-}
-
-func (d *WatchDuration) String() string {
-	return fmt.Sprintf("%s\t%s\t%s", d.name, d.dur, d.dur/time.Duration(d.times))
-}
-
-func (d *WatchDuration) Report(idx int, lastDur time.Duration) string {
-	stepDur := d.dur - lastDur
-	atomicTime := lastDur / time.Duration(d.times)
-
-	return fmt.Sprintf("%d\t%s\t%s\t%s\t%s", idx, d.name, d.dur, stepDur, atomicTime)
-}
-
-func (d *WatchDuration) Duration() time.Duration {
-	return d.dur
 }
 
 //StopWatch is a useful time mesure tool object
 type StopWatch struct {
 	startTime time.Time
-	lastDur   time.Duration //last watch duration
+	lastDur   Duration //last watch duration
 	durList   []WatchDuration
 }
 
@@ -64,13 +35,13 @@ func (w *StopWatch) Start() time.Time {
 	return w.startTime
 }
 
-func (w *StopWatch) Stop() time.Duration {
-	t := time.Now()
-	d := t.Sub(w.startTime)
-	return d
+func (w *StopWatch) Stop() {
+	w.startTime = time.Time{}
+	w.durList = w.durList[:0]
+	w.lastDur = 0
 }
 
-func (w *StopWatch) Clear() time.Duration {
+func (w *StopWatch) Clear() Duration {
 	t := time.Now()
 	d := t.Sub(w.startTime)
 	w.durList = nil
@@ -110,13 +81,39 @@ func (w *StopWatch) ReportWatch(name string, times uint) string {
 
 	w.lastDur = dur
 
-	atomicTime := stepDur / time.Duration(times)
+	atomicTime := stepDur / Duration(times)
 
 	return fmt.Sprintf("Watch%d\t%s\t%s\t%s\t%s\t%d", len(w.durList), name, dur, stepDur, atomicTime, int64(atomicTime))
 }
 
+func (w *StopWatch) ReportAll() string {
+	var buf bytes.Buffer
+	buf.WriteString("StopWatch:\n")
+	if nil != w.durList {
+		lastDur := Duration(0)
+		for i, v := range w.durList {
+			buf.WriteString(v.Report(i+1, lastDur))
+			buf.WriteString("\n")
+			lastDur = v.dur
+		}
+	}
+
+	return buf.String()
+}
+
 func (w *StopWatch) Count() int {
 	return len(w.durList)
+}
+
+func (w *StopWatch) TellDuration() Duration {
+	dur := time.Now().Sub(w.startTime)
+	return dur
+}
+
+func (w *StopWatch) TellStepDuration() Duration {
+	dur := time.Now().Sub(w.startTime)
+	stepDur := dur - w.lastDur
+	return stepDur
 }
 
 func (w *StopWatch) TellWatch(idx int) (d WatchDuration) {
@@ -130,22 +127,8 @@ func (w *StopWatch) TellAllWatch() []WatchDuration {
 	return w.durList
 }
 
-func (w *StopWatch) Report() string {
-	var buf bytes.Buffer
-	buf.WriteString("StopWatch:\n")
-	if nil != w.durList {
-		lastDur := time.Duration(0)
-		for i, v := range w.durList {
-			buf.WriteString(v.Report(i+1, lastDur))
-			buf.WriteString("\n")
-			lastDur = v.dur
-		}
-	}
-
-	return buf.String()
-}
-
-func (w *StopWatch) Restart() time.Duration {
+// Restart restart the stop watch and return time duration from last start time
+func (w *StopWatch) Restart() Duration {
 	t := time.Now()
 	d := t.Sub(w.startTime)
 	w.durList = w.durList[:0]
