@@ -13,17 +13,19 @@ type stat struct {
 	MaxListLen      uint32
 	TooBusyCount    uint64
 	FinishTaskCount uint64
-	FreeTime        time.Duration
-	BusyTime        time.Duration
-
-	sw *stopwatch.StopWatch
+	FreeTime        int64
+	WorkingTime     int64
+	BusyTime        int64
 
 	//stat
 	SumWorkerCount uint64
 	SumListLen     uint64
 	CountStat      uint32
-	// //caculate values
-	// TotalTime  time.Duration
+
+	sw *stopwatch.StopWatch
+}
+
+func (s *stat) AddStat(workerCount int, listLen int) {
 }
 
 type StatResult struct {
@@ -33,11 +35,10 @@ type StatResult struct {
 	FinishTaskCount uint64
 	AvgWorkers      float32
 	AvgListLen      float32
-}
-
-func (s *stat) AddStat(workerCount int, listLen int) {
+	FreeTime        time.Duration
+	WorkingTime     time.Duration
+	BusyTime        time.Duration
 }
 
 func (s *stat) Report() {
-
 }
