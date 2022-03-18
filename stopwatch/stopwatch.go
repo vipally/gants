@@ -43,7 +43,7 @@ func (d *WatchDuration) Report(idx int, lastDur time.Duration) string {
 	stepDur := d.dur - lastDur
 	atomicTime := lastDur / time.Duration(d.times)
 
-	return fmt.Sprintf("%d\t%s\t%s\t%s\t%s\t%d", idx, d.name, d.dur, stepDur, atomicTime)
+	return fmt.Sprintf("%d\t%s\t%s\t%s\t%s", idx, d.name, d.dur, stepDur, atomicTime)
 }
 
 func (d *WatchDuration) Duration() time.Duration {
