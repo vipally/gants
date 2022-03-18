@@ -11,7 +11,7 @@ func loadOptions(options ...Option) *Options {
 	return opts
 }
 
-// Options contains all options which will be applied when instantiating an gants pool.
+// Options contains all options which will be applied when instantiating a gants pool.
 type Options struct {
 	EnableStatistic bool
 
