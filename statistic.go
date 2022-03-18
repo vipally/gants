@@ -2,6 +2,8 @@ package gants
 
 import (
 	"time"
+
+	"github.com/gxlb/gants/stopwatch"
 )
 
 type stat struct {
@@ -13,6 +15,8 @@ type stat struct {
 	FinishTaskCount uint64
 	FreeTime        time.Duration
 	BusyTime        time.Duration
+
+	sw *stopwatch.StopWatch
 
 	//stat
 	SumWorkerCount uint64
