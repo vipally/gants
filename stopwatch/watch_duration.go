@@ -23,7 +23,8 @@ func (d *WatchDuration) Init(name string, dur Duration, times uint) {
 
 // String show the watch duration as string.
 func (d *WatchDuration) String() string {
-	return fmt.Sprintf("%s\t%s\t%s", d.name, d.dur, d.dur/Duration(d.times))
+	return fmt.Sprintf("%s\t%s\t%s",
+		d.name, d.dur, d.dur/Duration(d.times))
 }
 
 // Report show that watch string as string.
@@ -31,7 +32,8 @@ func (d *WatchDuration) Report(idx int, lastDur Duration) string {
 	stepDur := d.dur - lastDur
 	atomicTime := lastDur / Duration(d.times)
 
-	return fmt.Sprintf("%d\t%s\t%s\t%s\t%s", idx, d.name, d.dur, stepDur, atomicTime)
+	return fmt.Sprintf("%d\t%s\t%s\t%s\t%s",
+		idx, d.name, d.dur, stepDur, atomicTime)
 }
 
 // Duration return duration of this step watch.
