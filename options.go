@@ -11,8 +11,29 @@ func loadOptions(options ...Option) *Options {
 	return opts
 }
 
-// Options contains all options which will be applied when instantiating an ants pool.
+// Options contains all options which will be applied when instantiating an gants pool.
 type Options struct {
-	//
-	WithStatistic bool
+	EnableStatistic bool
+
+	MaxWorkerCount int
+
+	MaxTaskQueue int
+}
+
+func WithStatistic() Option {
+	return func(opts *Options) {
+		opts.EnableStatistic = true
+	}
+}
+
+func WithMaxWorkerCount(maxWorkerCount int) Option {
+	return func(opts *Options) {
+		opts.MaxWorkerCount = maxWorkerCount
+	}
+}
+
+func WithMaxTaskQueue(maxTaskQueue int) Option {
+	return func(opts *Options) {
+		opts.MaxTaskQueue = maxTaskQueue
+	}
 }
