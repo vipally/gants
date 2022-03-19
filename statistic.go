@@ -2,13 +2,12 @@ package gants
 
 import (
 	"time"
-
-	"github.com/gxlb/gants/stopwatch"
 )
 
 type stat struct {
 	Status          int32
 	CurWorkers      uint32
+	CurListLen      uint32
 	MaxWorkers      uint32
 	MaxListLen      uint32
 	TooBusyCount    uint64
@@ -22,7 +21,7 @@ type stat struct {
 	SumListLen     uint64
 	CountStat      uint32
 
-	sw *stopwatch.StopWatch
+	sw *stopwatch
 }
 
 func (s *stat) AddStat(workerCount int, listLen int) {
