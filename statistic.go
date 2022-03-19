@@ -5,6 +5,7 @@ import (
 )
 
 type stat struct {
+	CountStat       uint32
 	Status          int32
 	CurWorkers      uint32
 	CurListLen      uint32
@@ -19,12 +20,25 @@ type stat struct {
 	//stat
 	SumWorkerCount uint64
 	SumListLen     uint64
-	CountStat      uint32
+	SumTaskCount   uint64
 
-	sw *stopwatch
+	sw stopwatch
 }
 
-func (s *stat) AddStat(workerCount int, listLen int) {
+func (s *stat) init() {
+	s.sw.Start()
+}
+
+func (s *stat) AddWorker() {
+}
+
+func (s *stat) DecWorker() {
+}
+
+func (s *stat) AddTask(listLen int) {
+}
+
+func (s *stat) DecTask(listLen int) {
 }
 
 type StatResult struct {
