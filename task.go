@@ -3,6 +3,6 @@ package gants
 type Task struct {
 }
 
-func (t *Task) Exec() {
+func (t *Task) Execute() {
 
 }
