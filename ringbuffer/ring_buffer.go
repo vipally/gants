@@ -10,7 +10,9 @@ import (
 
 func NewRingBuffer(size int) *RingBuffer {
 	p := &RingBuffer{}
-	p.Init(size)
+	if err := p.Init(size); err != nil {
+		panic(err)
+	}
 	return p
 }
 
@@ -62,10 +64,7 @@ func (rb *RingBuffer) Init(size int) error {
 	if runtime.GOMAXPROCS(0) < needCpus {
 		return fmt.Errorf("RingBuffer: requires parallelism(runtime.GOMAXPROCS >= %d)", needCpus)
 	}
-	if size <= 0 {
-		return fmt.Errorf("RingBuffer: invalid size %d", size)
-	}
-	atomic.StoreInt32(&rb.size , int32(size))
+
 	if rb.waitReadR == nil {
 		rb.waitReadR = sync.NewCond(new(sync.Mutex))
 		rb.waitWriteR = sync.NewCond(new(sync.Mutex))
@@ -73,11 +72,15 @@ func (rb *RingBuffer) Init(size int) error {
 		rb.waitWriteC = sync.NewCond(new(sync.Mutex))
 	}
 
-	return nil
+	return rb.Resize(size)
 }
 
-func (rb *RingBuffer) Resize(size int) {
-
+func (rb *RingBuffer) Resize(size int) error {
+	if size <= 0 {
+		return fmt.Errorf("RingBuffer: invalid size %d", size)
+	}
+	atomic.StoreInt32(&rb.size, int32(size))
+	return nil
 }
 
 // Size return size of ringbuffer
