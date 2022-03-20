@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+var maxTry = 1
+var sumTry = 0
+var countTry = 0
+
+// NewRingBuffer create a ringbuffer.
 func NewRingBuffer(size int) *RingBuffer {
 	p := &RingBuffer{}
 	if err := p.Init(size); err != nil {
@@ -16,7 +21,7 @@ func NewRingBuffer(size int) *RingBuffer {
 	return p
 }
 
-//BufferId is the id of a buffer
+// BufferId is the id of a buffer.
 type BufferId uint64
 
 // RingBuffer is goroutine-safe cycle buffer.
@@ -40,16 +45,20 @@ type RingBuffer struct {
 	wCommit    uint64     // Write commit, mutable
 }
 
+// Debug switch debug options.
 func (rb *RingBuffer) Debug(enable bool) {
 	rb.debug = enable
 }
 
-func (rb *RingBuffer) log(name string) func() {
+func (rb *RingBuffer) log(wid int, name string) func() {
 	start := time.Now()
 	//fmt.Printf("%s %s start\n", start, name)
 	deferFun := func() {
 		end := time.Now()
 		cost := end.Sub(start)
+		if cost > time.Millisecond*200 {
+			panic(cost.String())
+		}
 		totalCost := atomic.AddInt64(&rb.totalWait, int64(cost))
 		fmt.Printf("%s %s end, cost=%s totalCost=%s\n", start, name, cost, time.Duration(totalCost))
 	}
@@ -75,6 +84,7 @@ func (rb *RingBuffer) Init(size int) error {
 	return rb.Resize(size)
 }
 
+// Resize change size of ringbuffer.
 func (rb *RingBuffer) Resize(size int) error {
 	if size <= 0 {
 		return fmt.Errorf("RingBuffer: invalid size %d", size)
@@ -83,16 +93,17 @@ func (rb *RingBuffer) Resize(size int) error {
 	return nil
 }
 
-// Size return size of ringbuffer
+// Size return size of ringbuffer.
 func (rb *RingBuffer) Size() int {
 	return int(atomic.LoadInt32(&rb.size))
 }
 
-// BufferIndex returns logic index of buffer by id
+// BufferIndex returns logic index of buffer by id.
 func (rb *RingBuffer) BufferIndex(id uint64) int {
 	return int(id % uint64(rb.Size()))
 }
 
+// Show shows status of ring buffer
 func (rb *RingBuffer) Show() string {
 	return fmt.Sprintf("%s rR=%d rC=%d wR=%d wC=%d",
 		time.Now().Format("2006-01-02T15:04:05.999"),
@@ -110,7 +121,7 @@ func (rb *RingBuffer) ReserveWrite(wid int) (bid uint64) {
 	bid = atomic.AddUint64(&rb.wReserve, 1) - 1
 
 	if rb.debug {
-		fn := rb.log("ReserveWrite")
+		fn := rb.log(wid, "ReserveWrite")
 		defer fn()
 	}
 
@@ -118,7 +129,7 @@ func (rb *RingBuffer) ReserveWrite(wid int) (bid uint64) {
 	for {
 		try++
 		if rb.debug {
-			fmt.Printf("ReserveWrite try=%d wid=%d %s\n", try, wid, rb.Show())
+			logTry("ReserveWrite", try, wid, rb.Show())
 		}
 
 		dataStart := atomic.LoadUint64(&rb.rCommit)
@@ -126,12 +137,13 @@ func (rb *RingBuffer) ReserveWrite(wid int) (bid uint64) {
 		if bid < maxW { //no conflict, reserve ok
 			break
 		}
-
+		runtime.Gosched()
 		//buffer full, wait as writer in order to awake by another reader
-		rb.waitWriteR.L.Lock()
-		rb.waitWriteR.Wait()
-		rb.waitWriteR.L.Unlock()
+		//rb.waitWriteR.L.Lock()
+		//rb.waitWriteR.Wait()
+		//rb.waitWriteR.L.Unlock()
 	}
+	updateTry(try)
 
 	return
 }
@@ -144,7 +156,7 @@ func (rb *RingBuffer) CommitWrite(wid int, bid uint64) {
 	newId := bid + 1
 
 	if rb.debug {
-		fn := rb.log("CommitWrite")
+		fn := rb.log(wid, "CommitWrite")
 		defer fn()
 	}
 
@@ -152,7 +164,7 @@ func (rb *RingBuffer) CommitWrite(wid int, bid uint64) {
 	for {
 		try++
 		if rb.debug {
-			fmt.Printf("CommitWrite try=%d wid=%d %s\n", try, wid, rb.Show())
+			logTry("CommitWrite", try, wid, rb.Show())
 		}
 
 		if atomic.CompareAndSwapUint64(&rb.wCommit, bid, newId) { //commit OK
@@ -161,11 +173,13 @@ func (rb *RingBuffer) CommitWrite(wid int, bid uint64) {
 			break
 		}
 
+		runtime.Gosched()
 		//commit fail, wait as reader in order to wakeup by another writer
-		rb.waitWriteC.L.Lock()
-		rb.waitWriteC.Wait()
-		rb.waitWriteC.L.Unlock()
+		//rb.waitWriteC.L.Lock()
+		//rb.waitWriteC.Wait()
+		//rb.waitWriteC.L.Unlock()
 	}
+	updateTry(try)
 }
 
 // ReserveRead returns next avable id for read.
@@ -175,7 +189,7 @@ func (rb *RingBuffer) ReserveRead(wid int) (bid uint64) {
 	bid = atomic.AddUint64(&rb.rReserve, 1) - 1
 
 	if rb.debug {
-		fn := rb.log("ReserveRead")
+		fn := rb.log(wid, "ReserveRead")
 		defer fn()
 	}
 
@@ -183,7 +197,7 @@ func (rb *RingBuffer) ReserveRead(wid int) (bid uint64) {
 	for {
 		try++
 		if rb.debug {
-			fmt.Printf("ReserveRead try=%d wid=%d %s\n", try, wid, rb.Show())
+			logTry("ReserveRead", try, wid, rb.Show())
 		}
 
 		w := atomic.LoadUint64(&rb.wCommit)
@@ -191,11 +205,13 @@ func (rb *RingBuffer) ReserveRead(wid int) (bid uint64) {
 			break
 		}
 
+		runtime.Gosched()
 		//buffer empty, wait as reader in order to wakeup by another writer
-		rb.waitReadR.L.Lock()
-		rb.waitReadR.Wait()
-		rb.waitReadR.L.Unlock()
+		//rb.waitReadR.L.Lock()
+		//rb.waitReadR.Wait()
+		//rb.waitReadR.L.Unlock()
 	}
+	updateTry(try)
 
 	return
 }
@@ -208,7 +224,7 @@ func (rb *RingBuffer) CommitRead(wid int, bid uint64) {
 	newId := bid + 1
 
 	if rb.debug {
-		fn := rb.log("CommitRead")
+		fn := rb.log(wid, "CommitRead")
 		defer fn()
 	}
 
@@ -216,7 +232,7 @@ func (rb *RingBuffer) CommitRead(wid int, bid uint64) {
 	for {
 		try++
 		if rb.debug {
-			fmt.Printf("CommitRead try=%d wid=%d %s\n", try, wid, rb.Show())
+			logTry("CommitRead", try, wid, rb.Show())
 		}
 
 		if atomic.CompareAndSwapUint64(&rb.rCommit, bid, newId) {
@@ -225,9 +241,31 @@ func (rb *RingBuffer) CommitRead(wid int, bid uint64) {
 			break
 		}
 
+		runtime.Gosched()
 		//commit fail, wait as writer in order to wakeup by another reader
-		rb.waitReadC.L.Lock()
-		rb.waitReadC.Wait()
-		rb.waitReadC.L.Unlock()
+		//rb.waitReadC.L.Lock()
+		//rb.waitReadC.Wait()
+		//rb.waitReadC.L.Unlock()
+	}
+	updateTry(try)
+}
+
+func updateTry(try int) {
+	if sumTry > 0 {
+		countTry++
+	}
+	sumTry += try
+	if try > maxTry {
+		maxTry = try
+		fmt.Printf("************maxTry=%d\n", maxTry)
+	}
+}
+
+func logTry(name string, try int, wid int, msg string) {
+	if try > 1 {
+		fmt.Printf("%s try=%d wid=%d maxTry=%d avgTry=%d %s\n", name, try, wid, maxTry, sumTry/countTry, msg)
+		if try > 100 {
+			//panic(try)
+		}
 	}
 }
