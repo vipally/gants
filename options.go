@@ -16,8 +16,6 @@ type Options struct {
 	EnableStatistic bool
 
 	MaxWorkerCount int
-
-	MaxTaskQueue int
 }
 
 func WithStatistic() Option {
@@ -29,11 +27,5 @@ func WithStatistic() Option {
 func WithMaxWorkerCount(maxWorkerCount int) Option {
 	return func(opts *Options) {
 		opts.MaxWorkerCount = maxWorkerCount
-	}
-}
-
-func WithMaxTaskQueue(maxTaskQueue int) Option {
-	return func(opts *Options) {
-		opts.MaxTaskQueue = maxTaskQueue
 	}
 }

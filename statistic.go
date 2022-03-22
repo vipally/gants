@@ -7,6 +7,7 @@ import (
 type stat struct {
 	CountStat       uint32
 	Status          int32
+	IdleWorkers     int32
 	CurWorkers      uint32
 	CurListLen      uint32
 	MaxWorkers      uint32
