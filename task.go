@@ -20,23 +20,23 @@ func (f ExecuterFunc) Execute() {
 }
 
 type task struct {
-	e  Executer
+	f  func()
 	id uint64
 }
 
-func (t *task) Execute() {
-	t.e.Execute()
-}
+// func (t *task) Execute() {
+// 	t.f()
+// }
 
 type taskPool struct {
 	pool  []*task
 	idGen uint64
 }
 
-func (p *taskPool) Acquire(e Executer) *task {
+func (p *taskPool) Acquire(f func()) *task {
 	id := atomic.AddUint64(&p.idGen, 1)
 	return &task{
-		e:  e,
+		f:  f,
 		id: id,
 	}
 }

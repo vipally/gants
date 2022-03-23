@@ -1,12 +1,30 @@
 package gants
 
+import (
+	"sync/atomic"
+	"time"
+)
+
+type workerStatus = int32
+
+const (
+	statusWorking workerStatus = iota
+	statusIdle
+	statusGo
+)
+
 type goWorker struct {
-	p  *Pool
-	id int
+	p               *Pool
+	statusStartTime int64
+	taskStartTime   int64
+	id              int32
+	status          workerStatus
 }
 
-func (w *goWorker) run() {
+func (w *goWorker) Run() {
 	var t *task
+	atomic.StoreInt32(&w.status, statusWorking)
+	atomic.StoreInt64(&w.statusStartTime, time.Now().UnixNano())
 	for {
 		t = nil
 		select {
@@ -20,9 +38,21 @@ func (w *goWorker) run() {
 			t, _ = w.p.tq.Pop() // fetch task from task queue
 		}
 		if t != nil {
-			t.Execute() // execute the task
+			atomic.StoreInt64(&w.taskStartTime, time.Now().UnixNano())
+			t.f() // execute the task
+			w.p.tp.Recycle(t)
 		} else {
+			atomic.StoreInt32(&w.status, statusIdle)
+			atomic.StoreInt64(&w.statusStartTime, time.Now().UnixNano())
+			w.p.wCond.L.Lock()
 			w.p.wCond.Wait() // no task, wait
+			w.p.wCond.L.Unlock()
+			atomic.StoreInt32(&w.status, statusWorking)
+			atomic.StoreInt64(&w.statusStartTime, time.Now().UnixNano())
 		}
 	}
+}
+
+func (w *goWorker) Go(f func()) {
+
 }
