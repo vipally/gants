@@ -13,7 +13,6 @@ func NewPool(options ...Option) *Pool {
 }
 
 type Pool struct {
-	lk     sync.Mutex
 	wCond  *sync.Cond
 	chTask chan *task
 	tq     taskQueue // task queue buffer if chTak is full
