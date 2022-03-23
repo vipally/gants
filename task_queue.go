@@ -4,11 +4,11 @@ package gants
 type taskQueue struct {
 }
 
-func (q taskQueue) Push(t *Task) error {
+func (q taskQueue) Push(t *task) error {
 	return nil
 }
 
-func (q taskQueue) Pop() (*Task, bool) {
+func (q taskQueue) Pop() (*task, bool) {
 	return nil, false
 }
 

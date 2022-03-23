@@ -15,22 +15,29 @@ func NewPool(options ...Option) *Pool {
 type Pool struct {
 	lk     sync.Mutex
 	wCond  *sync.Cond
-	chTask chan *Task
+	chTask chan *task
 	tq     taskQueue // task queue buffer if chTak is full
+	tp     taskPool  // pool of task object
 	stat   stat
 	opts   *Options
 
 	workerIDGen int32
 }
 
-func (p *Pool) PushTask(t *Task) (err error) {
-	if len(p.chTask) < cap(p.chTask) {
-		p.chTask <- t
-	} else {
-		err = p.tq.Push(t)
+func (p *Pool) Push(e Executer) TaskID {
+	t := p.tp.Acquire(e)
+	var ok bool
+	select {
+	case p.chTask <- t:
+		ok = true
+	default:
 	}
+	if !ok {
+		p.tq.Push(t)
+	}
+
 	p.wCond.Signal()
-	return
+	return t.id
 }
 
 func (p *Pool) Stop() {

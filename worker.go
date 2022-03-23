@@ -6,7 +6,7 @@ type goWorker struct {
 }
 
 func (w *goWorker) run() {
-	var t *Task
+	var t *task
 	for {
 		t = nil
 		select {
