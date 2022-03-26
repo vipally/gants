@@ -9,6 +9,7 @@ type stat struct {
 	Status          int32
 	IdleWorkers     int32
 	CurWorkers      uint32
+	GoWorkers       uint32
 	CurListLen      uint32
 	MaxWorkers      uint32
 	MaxListLen      uint32

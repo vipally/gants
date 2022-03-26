@@ -1,37 +1,40 @@
 package gants
 
 import (
+	"sync/atomic"
 	"time"
 )
 
 // newStopwatch create a stopwatch
 func newStopwatch() *stopwatch {
 	p := &stopwatch{
-		startTime: time.Now(),
+		startTime: time.Now().UnixNano(),
 	}
 	return p
 }
 
+// goroutine-safe time stopwatch
 type stopwatch struct {
-	startTime time.Time
+	startTime int64
 }
 
 // StartTime return start time of this stopwatch.
-func (w *stopwatch) StartTime() time.Time {
-	return w.startTime
+func (w *stopwatch) StartTime() int64 {
+	return atomic.LoadInt64(&w.startTime)
 }
 
 // Start reset start time of this stopwatch.
-func (w *stopwatch) Start() time.Time {
-	w.startTime = time.Now()
-	return w.StartTime()
+func (w *stopwatch) Start() int64 {
+	s := time.Now().UnixNano()
+	atomic.StoreInt64(&w.startTime, s)
+	return s
 }
 
 func (w *stopwatch) duration(reset bool) time.Duration {
-	t := time.Now()
-	dur := t.Sub(w.startTime)
+	t := time.Now().Unix()
+	dur := time.Duration(t - w.startTime)
 	if reset {
-		w.startTime = t
+		atomic.StoreInt64(&w.startTime, t)
 	}
 	return dur
 }

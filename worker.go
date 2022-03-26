@@ -28,6 +28,8 @@ func (w *goWorker) Run() {
 	for {
 		t = nil
 		select {
+		case <-w.p.ChExit:
+			return
 		case t = <-w.p.chTask: //fetch task from channel
 			if t == nil { // channel closed
 				return
@@ -53,6 +55,8 @@ func (w *goWorker) Run() {
 	}
 }
 
-func (w *goWorker) Go(f func()) {
-
+func (w *goWorker) Go(f func(p *Pool)) {
+	atomic.StoreInt32(&w.status, statusGo)
+	atomic.StoreInt64(&w.statusStartTime, time.Now().UnixNano())
+	f(w.p)
 }

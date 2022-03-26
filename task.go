@@ -6,19 +6,6 @@ import (
 
 type TaskID = uint64
 
-// Executer is the executable interface.
-type Executer interface {
-	Execute()
-}
-
-// ExecuterFunc is the func of Executer.
-type ExecuterFunc func()
-
-// Execute impliments Executer.
-func (f ExecuterFunc) Execute() {
-	f()
-}
-
 type task struct {
 	f  func()
 	id uint64
@@ -34,11 +21,15 @@ type taskPool struct {
 }
 
 func (p *taskPool) Acquire(f func()) *task {
-	id := atomic.AddUint64(&p.idGen, 1)
+	id := p.NextID()
 	return &task{
 		f:  f,
 		id: id,
 	}
+}
+
+func (p *taskPool) NextID() TaskID {
+	return atomic.AddUint64(&p.idGen, 1)
 }
 
 func (p *taskPool) Recycle(t *task) {

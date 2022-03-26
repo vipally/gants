@@ -14,8 +14,9 @@ func NewPool(options ...Option) *Pool {
 }
 
 type Pool struct {
-	wCond  *sync.Cond
 	ChExit chan struct{} // channel for notify exit for outside pool
+
+	wCond  *sync.Cond //Idle worker condition variable
 	chTask chan *task
 	tq     taskQueue  // task queue buffer if chTak is full
 	tp     taskPool   // pool of task object
@@ -42,8 +43,11 @@ func (p *Pool) Push(f func()) TaskID {
 }
 
 // Go execute a heavy task directly by special worker without schedule.
-func (p *Pool) Go(f func()) TaskID {
-	return 0
+func (p *Pool) Go(f func(p *Pool)) TaskID {
+	w := p.wp.Spawn()
+	t := p.tp.NextID()
+	go w.Go(f)
+	return t
 }
 
 func (p *Pool) Stop() {
