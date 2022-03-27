@@ -1,18 +1,20 @@
 package gants
 
 import (
+	"sync/atomic"
 	"time"
 )
 
 type stat struct {
-	CountStat       uint32
-	Status          int32
+	CountStat       uint64
+	Status          uint32
 	IdleWorkers     int32
-	CurWorkers      uint32
-	GoWorkers       uint32
+	CurWorkers      int32
+	GoWorkers       int32
 	CurListLen      uint32
 	MaxWorkers      uint32
 	MaxListLen      uint32
+	MaxTaskTime     int64
 	TooBusyCount    uint64
 	FinishTaskCount uint64
 	FreeTime        int64
@@ -23,12 +25,27 @@ type stat struct {
 	SumWorkerCount uint64
 	SumListLen     uint64
 	SumTaskCount   uint64
+	SumTaskTime    uint64
 
 	sw stopwatch
+	p  *Pool
 }
 
-func (s *stat) init() {
+func (s *stat) init(p *Pool) {
+	s.p = p
 	s.sw.Start()
+}
+
+func (s *stat) AddStat() {
+	iwc := atomic.LoadInt32(&s.IdleWorkers)
+	wc := int(atomic.LoadInt32(&s.CurWorkers))
+	if iwc == 0 &&
+		wc < s.p.opts.MaxWorkerCount {
+		s.p.spawnWorker()
+	}
+
+	taskLen := s.p.taskLen()
+	atomic.StoreUint32(&s.CurListLen, uint32(taskLen))
 }
 
 func (s *stat) AddWorker() {

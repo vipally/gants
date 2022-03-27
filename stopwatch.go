@@ -31,8 +31,8 @@ func (w *stopwatch) Start() int64 {
 }
 
 func (w *stopwatch) duration(reset bool) time.Duration {
-	t := time.Now().Unix()
-	dur := time.Duration(t - w.startTime)
+	t := time.Now().UnixNano()
+	dur := time.Duration(t - atomic.LoadInt64(&w.startTime))
 	if reset {
 		atomic.StoreInt64(&w.startTime, t)
 	}

@@ -13,6 +13,7 @@ func NewPool(options ...Option) *Pool {
 	}
 }
 
+// Pool is task pool
 type Pool struct {
 	ChExit chan struct{} // channel for notify exit for outside pool
 
@@ -38,16 +39,18 @@ func (p *Pool) Push(f func()) TaskID {
 		p.tq.Push(t)
 	}
 
-	p.wCond.Signal()
+	p.stat.AddStat()
+	p.wakeupWorker()
+
 	return t.id
 }
 
 // Go execute a heavy task directly by special worker without schedule.
 func (p *Pool) Go(f func(p *Pool)) TaskID {
 	w := p.wp.Spawn()
-	t := p.tp.NextID()
+	id := p.tp.NextID()
 	go w.Go(f)
-	return t
+	return id
 }
 
 func (p *Pool) Stop() {
@@ -55,8 +58,21 @@ func (p *Pool) Stop() {
 	close(p.chTask)
 }
 
+func (p *Pool) GracedStop() {
+	close(p.ChExit)
+	close(p.chTask)
+}
+
+func (p *Pool) taskLen() int {
+	return len(p.chTask) + p.tq.Len()
+}
+
 func (p *Pool) Report() {
 
+}
+
+func (p *Pool) wakeupWorker() {
+	p.wCond.Signal()
 }
 
 func (p *Pool) spawnWorker() {
