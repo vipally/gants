@@ -2,7 +2,10 @@ package gants
 
 import (
 	"sync"
+	"time"
 )
+
+type Duration = time.Duration
 
 func NewPool(options ...Option) *Pool {
 	opts := loadOptions(options...)
@@ -43,6 +46,11 @@ func (p *Pool) Push(f func()) TaskID {
 	p.wakeupWorker()
 
 	return t.id
+}
+
+// PushDelay push a task that execute after duration
+func (p *Pool) PushDelay(f func(), delay Duration) TaskID {
+	return 0
 }
 
 // Go execute a heavy task directly by special worker without schedule.
