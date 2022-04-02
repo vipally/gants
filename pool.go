@@ -48,6 +48,11 @@ func (p *Pool) Push(f func()) TaskID {
 	return t.id
 }
 
+// PushWithTimeout push a task that with timeout
+func (p *Pool) PushWithTimeout(f func(), timeour Duration) {
+
+}
+
 // PushDelay push a task that execute after duration
 func (p *Pool) PushDelay(f func(), delay Duration) TaskID {
 	return 0
@@ -66,7 +71,7 @@ func (p *Pool) Stop() {
 	close(p.chTask)
 }
 
-func (p *Pool) GracedStop() {
+func (p *Pool) GracefulStop() {
 	close(p.ChExit)
 	close(p.chTask)
 }
