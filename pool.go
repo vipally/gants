@@ -49,7 +49,7 @@ func (p *Pool) Push(f func()) TaskID {
 }
 
 // PushWithTimeout push a task that with timeout
-func (p *Pool) PushWithTimeout(f func(), timeour Duration) {
+func (p *Pool) PushWithTimeout(f func(), timeout Duration) {
 
 }
 
