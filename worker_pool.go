@@ -5,8 +5,8 @@ import (
 )
 
 type workerPool struct {
-	p           *Pool
-	workerIDGen int32
+	p     *Pool
+	idGen int32
 }
 
 func (wp *workerPool) Init(p *Pool) {
@@ -20,7 +20,7 @@ func (wp *workerPool) Acquire() *goWorker {
 func (wp *workerPool) Spawn() *goWorker {
 	w := &goWorker{
 		p:  wp.p,
-		id: atomic.AddInt32(&wp.workerIDGen, 1),
+		id: atomic.AddInt32(&wp.idGen, 1),
 	}
 	return w
 }
