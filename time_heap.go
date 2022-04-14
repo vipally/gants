@@ -7,16 +7,24 @@ import (
 )
 
 func nowTimestamp() int64 {
-	return time.Now().UnixNano() / 1e6
+	return timestamp(time.Now())
+}
+
+func timestamp(t time.Time) int64 {
+	return t.Unix()*1e3 + int64(t.Nanosecond()/1e6)
 }
 
 func newTimeHeap(size int) *timeHeap {
-	return &timeHeap{
+	h := &timeHeap{
 		list: make([]*task, 0, size),
+		tm:   time.NewTimer(time.Second),
 	}
+	h.tm.Stop()
+	return h
 }
 
 type timeHeap struct {
+	tm   *time.Timer
 	list []*task
 }
 
@@ -26,11 +34,25 @@ func (h *timeHeap) Push(s *task) error {
 		h.list = h.list[:h.Size()-1]
 		return err
 	}
+	h.tm.Reset(h.TopDuration())
 	return nil
 }
 
-func (h *timeHeap) PopIfTimeout(now int64) (*task, bool, time.Duration) {
-	return nil, false, 0
+func (h *timeHeap) PopTimeout() (*task, bool) {
+	// NOTE:
+	// If PopIfTimeout is trigger by h.tm
+	// It is necessary to check if h.TopDuration()<=0 here.
+	// Because if system clock if reset back during sleep,
+	// it is probbly h.TopDuration()>0 when wake up.
+	var t *task
+	var ok bool
+	if dur := h.TopDuration(); dur <= 0 {
+		t, ok = h.Pop()
+	}
+	if dur := h.TopDuration(); dur > 0 {
+		h.tm.Reset(dur)
+	}
+	return t, ok
 }
 
 func (h *timeHeap) Pop() (*task, bool) {
@@ -51,14 +73,17 @@ func (h *timeHeap) Pop() (*task, bool) {
 func (h *timeHeap) adjustDown(b []*task, hole int, v *task) {
 	// adjust heap to select a proper hole to set v
 	for l := h.lchild(hole); l < len(b); l = h.lchild(hole) {
-		c := l                                            // index that need compare with hole
-		if r := l + 1; r < len(b) && !h.cmp(b[r], b[l]) { // let the most proper child to compare with v
+		c := l // index that need compare with hole
+
+		// let the most proper child to compare with v
+		if r := l + 1; r < len(b) && !h.cmp(b[r], b[l]) {
 			c = r
 		}
 
 		if h.cmp(b[c], v) { //v is the most proper root, finish adjust
 			break
 		}
+
 		//c is the most proper root, swap with hole, and continue adjust
 		b[hole], hole = b[c], c
 	}
@@ -90,6 +115,15 @@ func (h *timeHeap) parent(idx int) int {
 // get left child index
 func (h *timeHeap) lchild(idx int) int {
 	return 2*idx + 1
+}
+
+// TopDuration return duration from now to top timer
+func (h *timeHeap) TopDuration() time.Duration {
+	if t := h.Top(); t > 0 {
+		now := nowTimestamp()
+		return time.Duration(now-t) * time.Millisecond
+	}
+	return time.Hour
 }
 
 func (h *timeHeap) Top() int64 {

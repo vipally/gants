@@ -23,7 +23,7 @@ type runnerPool struct {
 	idGen uint64
 }
 
-func (p *runnerPool) Acquire() *runner {
+func (p *runnerPool) Acquire(arg int64) *runner {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -34,6 +34,7 @@ func (p *runnerPool) Acquire() *runner {
 	} else {
 		r = &runner{}
 	}
+	r.arg = arg
 
 	return r
 }
