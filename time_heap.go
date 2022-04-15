@@ -49,8 +49,9 @@ func newTimeHeap(size int) *timeHeap {
 }
 
 type timeHeap struct {
-	tm *time.Timer
-	b  []*task
+	tm  *time.Timer
+	b   []*task
+	tmp [8]*task
 }
 
 func (h *timeHeap) PushDelay(s *task, dur time.Duration) {
@@ -82,7 +83,7 @@ func (h *timeHeap) PopTimeout() ([]*task, bool) {
 	// Because if system clock is reset back during sleep,
 	// it is probbly h.TopDuration()>0 when wake up.
 	// In that case, it is necessary to sleep again until timeout.
-	var ts []*task
+	var ts []*task = h.tmp[:0]
 	var dur time.Duration
 	for {
 		if dur = h.TopDuration(); dur <= 0 {
