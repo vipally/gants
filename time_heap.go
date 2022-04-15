@@ -50,8 +50,9 @@ func (h *timeHeap) PopTimeout() ([]*task, bool) {
 	// it is probbly h.TopDuration()>0 when wake up.
 	// In that case, it is necessary to sleep again until timeout.
 	var ts []*task
+	var dur time.Duration
 	for {
-		if dur := h.TopDuration(); dur <= 0 {
+		if dur = h.TopDuration(); dur <= 0 {
 			if t, ok := h.Pop(); ok {
 				ts = append(ts, t)
 			}
@@ -60,7 +61,7 @@ func (h *timeHeap) PopTimeout() ([]*task, bool) {
 		}
 	}
 
-	if dur := h.TopDuration(); dur > 0 {
+	if dur > 0 {
 		h.tm.Reset(dur)
 	}
 	return ts, len(ts) > 0
@@ -130,17 +131,17 @@ func (h *timeHeap) lchild(idx int) int {
 
 // TopDuration return duration from now to top timer
 func (h *timeHeap) TopDuration() time.Duration {
-	if t := h.Top(); t > 0 {
+	if t, ok := h.Top(); ok {
 		return time.Duration(nowTimestamp()-t) * time.Millisecond
 	}
-	return time.Hour
+	return time.Hour * 24
 }
 
-func (h *timeHeap) Top() int64 {
+func (h *timeHeap) Top() (int64, bool) {
 	if h.Empty() {
-		return -1
+		return -1, false
 	}
-	return h.list[0].timestamp
+	return h.list[0].timestamp, true
 }
 
 func (h *timeHeap) Size() int {
