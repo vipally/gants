@@ -16,26 +16,34 @@ func timestamp(t time.Time) int64 {
 
 func newTimeHeap(size int) *timeHeap {
 	h := &timeHeap{
-		list: make([]*task, 0, size),
-		tm:   time.NewTimer(time.Second),
+		b:  make([]*task, 0, size),
+		tm: time.NewTimer(time.Second),
 	}
 	h.tm.Stop()
 	return h
 }
 
 type timeHeap struct {
-	tm   *time.Timer
-	list []*task
+	tm *time.Timer
+	b  []*task
 }
 
-func (h *timeHeap) Push(s *task) error {
-	h.list = append(h.list, s)
-	if err := h.adjustUp(h.list, len(h.list)-1, s); err != nil {
-		h.list = h.list[:h.Size()-1]
-		return err
+func (h *timeHeap) PushDelay(s *task, dur time.Duration) {
+	s.timestamp = nowTimestamp() + int64(dur/time.Millisecond)
+	h.Push(s)
+}
+
+func (h *timeHeap) PushAt(s *task, t time.Time) {
+	s.timestamp = timestamp(t)
+	h.Push(s)
+}
+
+func (h *timeHeap) Push(s *task) {
+	h.b = append(h.b, s)
+	h.adjustUp(h.b, len(h.b)-1, s)
+	if s == h.b[0] {
+		h.tm.Reset(h.TopDuration())
 	}
-	h.tm.Reset(h.TopDuration())
-	return nil
 }
 
 func (h *timeHeap) WaitTimer() {
@@ -71,12 +79,12 @@ func (h *timeHeap) Pop() (*task, bool) {
 	if h.Empty() {
 		return nil, false
 	}
-	ret := h.list[0]
+	ret := h.b[0]
 	if s := h.Size() - 1; s > 0 {
-		h.list[0], h.list[s] = h.list[s], h.list[0]
-		h.adjustDown(h.list[:h.Size()-1], 0, h.list[0])
+		h.b[0], h.b[s] = h.b[s], h.b[0]
+		h.adjustDown(h.b[:h.Size()-1], 0, h.b[0])
 	}
-	h.list = h.list[:h.Size()-1]
+	h.b = h.b[:h.Size()-1]
 
 	return ret, true
 }
@@ -103,7 +111,7 @@ func (h *timeHeap) adjustDown(b []*task, hole int, v *task) {
 }
 
 // adjust heap to select a proper hole to set v
-func (h *timeHeap) adjustUp(b []*task, hole int, v *task) error {
+func (h *timeHeap) adjustUp(b []*task, hole int, v *task) {
 	for hole > 0 {
 		if parent := h.parent(hole); !h.cmp(v, b[parent]) {
 			b[hole], hole = b[parent], parent
@@ -112,7 +120,6 @@ func (h *timeHeap) adjustUp(b []*task, hole int, v *task) error {
 		}
 	}
 	b[hole] = v //put v to last hole
-	return nil
 }
 
 func (h *timeHeap) cmp(c, p *task) bool {
@@ -141,11 +148,11 @@ func (h *timeHeap) Top() (int64, bool) {
 	if h.Empty() {
 		return -1, false
 	}
-	return h.list[0].timestamp, true
+	return h.b[0].timestamp, true
 }
 
 func (h *timeHeap) Size() int {
-	return len(h.list)
+	return len(h.b)
 }
 
 func (h *timeHeap) Empty() bool {
@@ -156,7 +163,7 @@ func (h *timeHeap) Empty() bool {
 func (h *timeHeap) CheckHeap() bool {
 	for i := h.Size() - 1; i > 0; i-- {
 		p := h.parent(i)
-		if !h.cmp(h.list[i], h.list[p]) {
+		if !h.cmp(h.b[i], h.b[p]) {
 			return false
 		}
 	}
@@ -166,7 +173,7 @@ func (h *timeHeap) CheckHeap() bool {
 func (h *timeHeap) Show() string {
 	var b strings.Builder
 	b.WriteString("-------\n")
-	for i, v := range h.list {
+	for i, v := range h.b {
 		b.WriteString(fmt.Sprintf("%d ", v.timestamp))
 		if (i+1)&(i+2) == 0 {
 			b.WriteByte('\n')
