@@ -38,21 +38,32 @@ func (h *timeHeap) Push(s *task) error {
 	return nil
 }
 
-func (h *timeHeap) PopTimeout() (*task, bool) {
+func (h *timeHeap) WaitTimer() {
+	<-h.tm.C
+}
+
+func (h *timeHeap) PopTimeout() ([]*task, bool) {
 	// NOTE:
-	// If PopIfTimeout is trigger by h.tm
+	// If PopTimeout is trigger by WaitTimer()
 	// It is necessary to check if h.TopDuration()<=0 here.
-	// Because if system clock if reset back during sleep,
+	// Because if system clock is reset back during sleep,
 	// it is probbly h.TopDuration()>0 when wake up.
-	var t *task
-	var ok bool
-	if dur := h.TopDuration(); dur <= 0 {
-		t, ok = h.Pop()
+	// In that case, it is necessary to sleep again until timeout.
+	var ts []*task
+	for {
+		if dur := h.TopDuration(); dur <= 0 {
+			if t, ok := h.Pop(); ok {
+				ts = append(ts, t)
+			}
+		} else {
+			break
+		}
 	}
+
 	if dur := h.TopDuration(); dur > 0 {
 		h.tm.Reset(dur)
 	}
-	return t, ok
+	return ts, len(ts) > 0
 }
 
 func (h *timeHeap) Pop() (*task, bool) {
@@ -120,8 +131,7 @@ func (h *timeHeap) lchild(idx int) int {
 // TopDuration return duration from now to top timer
 func (h *timeHeap) TopDuration() time.Duration {
 	if t := h.Top(); t > 0 {
-		now := nowTimestamp()
-		return time.Duration(now-t) * time.Millisecond
+		return time.Duration(nowTimestamp()-t) * time.Millisecond
 	}
 	return time.Hour
 }
