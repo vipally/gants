@@ -27,10 +27,19 @@ func (t *task) clean() *task {
 
 type taskPool struct {
 	lock sync.Mutex
+	tp   *timeTaskPool
 
-	pool     []*task
-	timePool []*timeTask
-	idGen    uint64
+	pool  []*task
+	idGen uint64
+}
+
+func (p *taskPool) Init(capacity int) {
+	p.tp = &timeTaskPool{
+		tp:   p,
+		pool: make([]*timeTask, 0, capacity),
+	}
+	p.idGen = 0
+	p.pool = make([]*task, 0, capacity)
 }
 
 func (p *taskPool) Acquire(f func()) *task {
@@ -108,9 +117,11 @@ func (p *timeTaskPool) acquire(f func()) *timeTask {
 	return r
 }
 
-func (p *timeTaskPool) Recycle(t *timeTask) {
+func (p *timeTaskPool) Recycle(t *timeTask) *task {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
+	r := t.t
 	p.pool = append(p.pool, t.clean())
+	return r
 }

@@ -1,6 +1,6 @@
 // Copyright 2022 The @gxlb Authors. All rights reserved.
 // Use of this source code is governed by a MIT License.
-// license that can be found in the LICENSE file.
+// License that can be found in the LICENSE file.
 
 package gants
 
@@ -56,13 +56,13 @@ func (p *Pool) pushChannel(t *task) bool {
 	return ok
 }
 
-// PushWithTimeout push a task that with timeout
-func (p *Pool) PushWithTimeout(f func(), timeout Duration) {
-
+// PushWithTimeout push a task that execute after duration
+func (p *Pool) PushWithTimeout(f func(), timeout Duration) TaskID {
+	return 0
 }
 
-// PushDelay push a task that execute after duration
-func (p *Pool) PushDelay(f func(), delay Duration) TaskID {
+// PushWithTime push a task with execute time
+func (p *Pool) PushWithTime(f func(), t time.Time) TaskID {
 	return 0
 }
 
