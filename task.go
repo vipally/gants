@@ -28,14 +28,18 @@ func (t *task) clean() *task {
 type taskPool struct {
 	lock sync.Mutex
 
-	pool  []*task
-	idGen uint64
+	pool     []*task
+	timePool []*timeTask
+	idGen    uint64
 }
 
 func (p *taskPool) Acquire(f func()) *task {
 	p.lock.Lock()
 	defer p.lock.Unlock()
+	return p.acquire(f)
+}
 
+func (p *taskPool) acquire(f func()) *task {
 	var r *task
 	if size := len(p.pool); size > 0 {
 		r = p.pool[size-1]
@@ -58,4 +62,55 @@ func (p *taskPool) Recycle(t *task) {
 
 func (p *taskPool) NextID() TaskID {
 	return atomic.AddUint64(&p.idGen, 1)
+}
+
+//------------------------------------------------------------------------------
+
+type timeTask struct {
+	t         *task
+	timestamp int64
+}
+
+func (t *timeTask) clean() *timeTask {
+	t.t = nil
+	t.timestamp = 0
+	return t
+}
+
+//------------------------------------------------------------------------------
+
+type timeTaskPool struct {
+	lock sync.Mutex
+
+	tp   *taskPool
+	pool []*timeTask
+}
+
+func (p *timeTaskPool) Acquire(f func()) *timeTask {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	return p.acquire(f)
+}
+
+func (p *timeTaskPool) acquire(f func()) *timeTask {
+
+	t := p.tp.Acquire(f)
+
+	var r *timeTask
+	if size := len(p.pool); size > 0 {
+		r = p.pool[size-1]
+		p.pool = p.pool[:size-1]
+	} else {
+		r = &timeTask{}
+	}
+
+	r.t = t
+	return r
+}
+
+func (p *timeTaskPool) Recycle(t *timeTask) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.pool = append(p.pool, t.clean())
 }

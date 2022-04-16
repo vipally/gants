@@ -31,11 +31,6 @@ func newTimeHeap(size int) *timeHeap {
 	return h
 }
 
-type timeTask struct {
-	t         *timeTask
-	timestamp int64
-}
-
 type timeHeap struct {
 	tm  *time.Timer
 	b   []*timeTask
