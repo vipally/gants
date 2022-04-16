@@ -11,13 +11,6 @@ import (
 
 type stat struct {
 	CountStat       uint64
-	Status          uint32
-	IdleWorkers     int32
-	CurWorkers      int32
-	GoWorkers       int32
-	CurListLen      uint32
-	MaxWorkers      uint32
-	MaxListLen      uint32
 	MaxTaskTime     int64
 	TooBusyCount    uint64
 	FinishTaskCount uint64
@@ -30,6 +23,14 @@ type stat struct {
 	SumListLen     uint64
 	SumTaskCount   uint64
 	SumTaskTime    uint64
+
+	Status      uint32
+	IdleWorkers int32
+	CurWorkers  int32
+	GoWorkers   int32
+	CurListLen  uint32
+	MaxWorkers  uint32
+	MaxListLen  uint32
 
 	sw stopwatch
 	p  *Pool

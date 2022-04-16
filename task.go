@@ -1,6 +1,6 @@
 // Copyright 2022 The @gxlb Authors. All rights reserved.
 // Use of this source code is governed by a MIT License.
-// license that can be found in the LICENSE file.
+// License that can be found in the LICENSE file.
 
 package gants
 
@@ -13,15 +13,13 @@ import (
 type TaskID = uint64
 
 type task struct {
-	f         func()
-	id        uint64
-	timestamp int64
+	id uint64
+	f  func()
 }
 
 func (t *task) clean() *task {
 	t.f = nil
 	t.id = 0
-	t.timestamp = 0
 	return t
 }
 

@@ -36,13 +36,7 @@ type Pool struct {
 // Push summit a task for scheduled worker.
 func (p *Pool) Push(f func()) TaskID {
 	t := p.tp.Acquire(f)
-	var ok bool
-	select {
-	case p.chTask <- t:
-		ok = true
-	default:
-	}
-	if !ok {
+	if ok := p.pushChannel(t); !ok {
 		p.tq.Push(t)
 	}
 
@@ -50,6 +44,16 @@ func (p *Pool) Push(f func()) TaskID {
 	p.wakeupWorker()
 
 	return t.id
+}
+
+func (p *Pool) pushChannel(t *task) bool {
+	var ok bool
+	select {
+	case p.chTask <- t:
+		ok = true
+	default:
+	}
+	return ok
 }
 
 // PushWithTimeout push a task that with timeout

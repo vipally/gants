@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+func nowPrecisionTimestamp() int64 {
+	return time.Now().UnixNano()
+}
+
 func nowTimestamp() int64 {
 	return timestamp(time.Now())
 }
@@ -20,30 +24,35 @@ func timestamp(t time.Time) int64 {
 
 func newTimeHeap(size int) *timeHeap {
 	h := &timeHeap{
-		b:  make([]*task, 0, size),
+		b:  make([]*timeTask, 0, size),
 		tm: time.NewTimer(time.Second),
 	}
 	h.tm.Stop()
 	return h
 }
 
-type timeHeap struct {
-	tm  *time.Timer
-	b   []*task
-	tmp [8]*task
+type timeTask struct {
+	t         *timeTask
+	timestamp int64
 }
 
-func (h *timeHeap) PushDelay(s *task, dur time.Duration) {
+type timeHeap struct {
+	tm  *time.Timer
+	b   []*timeTask
+	tmp [8]*timeTask
+}
+
+func (h *timeHeap) PushDelay(s *timeTask, dur time.Duration) {
 	s.timestamp = nowTimestamp() + int64(dur/time.Millisecond)
 	h.Push(s)
 }
 
-func (h *timeHeap) PushAt(s *task, t time.Time) {
+func (h *timeHeap) PushAt(s *timeTask, t time.Time) {
 	s.timestamp = timestamp(t)
 	h.Push(s)
 }
 
-func (h *timeHeap) Push(s *task) {
+func (h *timeHeap) Push(s *timeTask) {
 	h.b = append(h.b, s)
 	h.adjustUp(h.b, len(h.b)-1, s)
 	if s == h.b[0] {
@@ -55,14 +64,14 @@ func (h *timeHeap) WaitTimeout() {
 	<-h.tm.C
 }
 
-func (h *timeHeap) PopTimeout() ([]*task, bool) {
+func (h *timeHeap) PopTimeout() ([]*timeTask, bool) {
 	// NOTE:
 	// If PopTimeout is trigger by WaitTimeout()
 	// It is necessary to check if h.TopDuration()<=0 here.
 	// Because if system clock is reset back during sleep,
 	// it is probbly h.TopDuration()>0 when wake up.
 	// In that case, it is necessary to sleep again until timeout.
-	var ts []*task = h.tmp[:0]
+	var ts []*timeTask = h.tmp[:0]
 	var dur time.Duration
 	for {
 		if dur = h.TopDuration(); dur <= 0 {
@@ -80,7 +89,7 @@ func (h *timeHeap) PopTimeout() ([]*task, bool) {
 	return ts, len(ts) > 0
 }
 
-func (h *timeHeap) Pop() (*task, bool) {
+func (h *timeHeap) Pop() (*timeTask, bool) {
 	if h.Empty() {
 		return nil, false
 	}
@@ -95,7 +104,7 @@ func (h *timeHeap) Pop() (*task, bool) {
 }
 
 // adjust heap to select a proper hole to set v
-func (h *timeHeap) adjustDown(b []*task, hole int, v *task) {
+func (h *timeHeap) adjustDown(b []*timeTask, hole int, v *timeTask) {
 	// adjust heap to select a proper hole to set v
 	for l := h.lchild(hole); l < len(b); l = h.lchild(hole) {
 		c := l // index that need compare with hole
@@ -116,7 +125,7 @@ func (h *timeHeap) adjustDown(b []*task, hole int, v *task) {
 }
 
 // adjust heap to select a proper hole to set v
-func (h *timeHeap) adjustUp(b []*task, hole int, v *task) {
+func (h *timeHeap) adjustUp(b []*timeTask, hole int, v *timeTask) {
 	for hole > 0 {
 		if parent := h.parent(hole); !h.cmp(v, b[parent]) {
 			b[hole], hole = b[parent], parent
@@ -127,7 +136,7 @@ func (h *timeHeap) adjustUp(b []*task, hole int, v *task) {
 	b[hole] = v //put v to last hole
 }
 
-func (h *timeHeap) cmp(c, p *task) bool {
+func (h *timeHeap) cmp(c, p *timeTask) bool {
 	return p.timestamp <= c.timestamp
 }
 
