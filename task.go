@@ -76,13 +76,13 @@ func (p *taskPool) NextID() TaskID {
 //------------------------------------------------------------------------------
 
 type timeTask struct {
-	t         *task
-	timestamp int64
+	t    *task
+	when int64
 }
 
 func (t *timeTask) clean() *timeTask {
 	t.t = nil
-	t.timestamp = 0
+	t.when = 0
 	return t
 }
 

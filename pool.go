@@ -56,13 +56,13 @@ func (p *Pool) pushChannel(t *task) bool {
 	return ok
 }
 
-// PushWithTimeout push a task that execute after duration
-func (p *Pool) PushWithTimeout(f func(), timeout Duration) TaskID {
+// PushAfter push a task that execute after duration
+func (p *Pool) PushAfter(f func(), timeout Duration) TaskID {
 	return 0
 }
 
-// PushWithTime push a task with execute time
-func (p *Pool) PushWithTime(f func(), t time.Time) TaskID {
+// PushAt push a task with execute time
+func (p *Pool) PushAt(f func(), t time.Time) TaskID {
 	return 0
 }
 

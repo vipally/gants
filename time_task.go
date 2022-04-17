@@ -38,12 +38,12 @@ type timeHeap struct {
 }
 
 func (h *timeHeap) PushDelay(s *timeTask, dur time.Duration) {
-	s.timestamp = nowTimestamp() + int64(dur/time.Millisecond)
+	s.when = nowTimestamp() + int64(dur/time.Millisecond)
 	h.Push(s)
 }
 
 func (h *timeHeap) PushAt(s *timeTask, t time.Time) {
-	s.timestamp = timestamp(t)
+	s.when = timestamp(t)
 	h.Push(s)
 }
 
@@ -61,21 +61,26 @@ func (h *timeHeap) WaitTimeout() {
 
 func (h *timeHeap) PopTimeout() ([]*timeTask, bool) {
 	// NOTE:
-	// If PopTimeout is trigger by WaitTimeout()
-	// It is necessary to check if h.TopDuration()<=0 here.
+	// PopTimeout is trigger by WaitTimeout()
+	// It is necessary to check if h.Top()<=now here.
 	// Because if system clock is reset back during sleep,
-	// it is probbly h.TopDuration()>0 when wake up.
+	// it is probbly h.Top()>now when wake up.
 	// In that case, it is necessary to sleep again until timeout.
 	var ts []*timeTask = h.tmp[:0]
-	var dur time.Duration
-	for {
-		if dur = h.TopDuration(); dur <= 0 {
-			if t, ok := h.Pop(); ok {
-				ts = append(ts, t)
+	var dur time.Duration = -1
+	for now := nowTimestamp(); ; {
+		if t, ok := h.Top(); ok {
+			if t <= now {
+				if t, ok := h.Pop(); ok {
+					ts = append(ts, t)
+					continue
+				}
 			}
-		} else {
-			break
+
+			dur = time.Duration(t-now) * time.Millisecond
 		}
+
+		break // end loop
 	}
 
 	if dur > 0 {
@@ -132,7 +137,7 @@ func (h *timeHeap) adjustUp(b []*timeTask, hole int, v *timeTask) {
 }
 
 func (h *timeHeap) cmp(c, p *timeTask) bool {
-	return p.timestamp <= c.timestamp
+	return p.when <= c.when
 }
 
 // get parent index
@@ -157,7 +162,7 @@ func (h *timeHeap) Top() (int64, bool) {
 	if h.Empty() {
 		return -1, false
 	}
-	return h.b[0].timestamp, true
+	return h.b[0].when, true
 }
 
 func (h *timeHeap) Size() int {
@@ -183,7 +188,7 @@ func (h *timeHeap) Show() string {
 	var b strings.Builder
 	b.WriteString("-------\n")
 	for i, v := range h.b {
-		b.WriteString(fmt.Sprintf("%d ", v.timestamp))
+		b.WriteString(fmt.Sprintf("%d ", v.when))
 		if (i+1)&(i+2) == 0 {
 			b.WriteByte('\n')
 		}
