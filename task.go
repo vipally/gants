@@ -102,7 +102,6 @@ func (p *timeTaskPool) Acquire(f func()) *timeTask {
 }
 
 func (p *timeTaskPool) acquire(f func()) *timeTask {
-
 	t := p.tp.Acquire(f)
 
 	var r *timeTask

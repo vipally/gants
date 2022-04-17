@@ -4,6 +4,10 @@
 
 package gants
 
+import (
+	"runtime"
+)
+
 // Option is the optional function.
 type Option func(opts *Options)
 
@@ -32,4 +36,15 @@ func WithMaxWorkerCount(maxWorkerCount int) Option {
 	return func(opts *Options) {
 		opts.MaxWorkerCount = maxWorkerCount
 	}
+}
+
+func limitWorkerCount(maxWorkerCount int) int {
+	const maxChannelLen = 4096
+	if maxWorkerCount > 0 {
+		if maxWorkerCount >= maxChannelLen {
+			return maxChannelLen
+		}
+		return maxWorkerCount
+	}
+	return runtime.NumCPU() * 2
 }

@@ -10,12 +10,18 @@ import (
 	"time"
 )
 
+const timeUnit = time.Millisecond
+
 func nowPrecisionTimestamp() int64 {
 	return time.Now().UnixNano()
 }
 
 func nowTimestamp() int64 {
 	return timestamp(time.Now())
+}
+
+func duration(when int64) Duration {
+	return Duration(nowTimestamp()-when) * timeUnit
 }
 
 func timestamp(t time.Time) int64 {
@@ -38,7 +44,7 @@ type timeHeap struct {
 }
 
 func (h *timeHeap) PushDelay(s *timeTask, dur time.Duration) {
-	s.when = nowTimestamp() + int64(dur/time.Millisecond)
+	s.when = nowTimestamp() + int64((dur+timeUnit-1)/timeUnit)
 	h.Push(s)
 }
 
@@ -51,7 +57,7 @@ func (h *timeHeap) Push(s *timeTask) {
 	h.b = append(h.b, s)
 	h.adjustUp(h.b, len(h.b)-1, s)
 	if s == h.b[0] {
-		h.tm.Reset(h.TopDuration())
+		h.tm.Reset(-duration(s.when))
 	}
 }
 
@@ -76,8 +82,7 @@ func (h *timeHeap) PopTimeout() ([]*timeTask, bool) {
 					continue
 				}
 			}
-
-			dur = time.Duration(t-now) * time.Millisecond
+			dur = time.Duration(t-now) * timeUnit
 		}
 
 		break // end loop
@@ -148,14 +153,6 @@ func (h *timeHeap) parent(idx int) int {
 // get left child index
 func (h *timeHeap) lchild(idx int) int {
 	return 2*idx + 1
-}
-
-// TopDuration return duration from now to top timer
-func (h *timeHeap) TopDuration() time.Duration {
-	if t, ok := h.Top(); ok {
-		return time.Duration(nowTimestamp()-t) * time.Millisecond
-	}
-	return time.Hour * 24
 }
 
 func (h *timeHeap) Top() (int64, bool) {

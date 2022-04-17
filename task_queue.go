@@ -4,18 +4,86 @@
 
 package gants
 
+const (
+	qTooLarge = 8192
+)
+
 // taskQueue is lockfree queue of task
 type taskQueue struct {
+	d    []*task
+	head int64
+	tail int64
 }
 
-func (q taskQueue) Push(t *task) error {
-	return nil
+func (q *taskQueue) Init(size int) {
+	q.grow(size)
 }
 
-func (q taskQueue) Pop() (*task, bool) {
-	return nil, false
+func (q *taskQueue) Push(t *task) {
+	q.d[int(q.tail)] = t
+	if q.tail++; q.tail >= int64(q.Cap()) {
+		q.tail = 0
+		if q.tail == q.head { //tail catch up head, buffer full
+			q.grow(0)
+		}
+	}
 }
 
-func (q taskQueue) Len() int {
-	return 0
+// PushFO push a task that with first out priority
+func (q *taskQueue) PushFO(t *task) {
+}
+
+func (q *taskQueue) Pop() (t *task, ok bool) {
+	if ok = q.head != q.tail; ok {
+		t = q.d[q.head]
+		if q.head++; q.head >= int64(q.Cap()) && q.head != q.tail {
+			q.head = 0
+		}
+	}
+	return
+}
+
+func (q *taskQueue) Cap() int {
+	return len(q.d)
+}
+
+func (q *taskQueue) Len() int {
+	return (int(q.tail) + q.Cap() - int(q.head)) % q.Cap()
+}
+
+func (q *taskQueue) grow(size int) {
+	oldCap := q.Cap()
+	d := q.d
+	q.d = make([]*task, q.nextCap(oldCap, size))
+	h := copy(q.d, d[q.head:])
+	t := copy(q.d[:h], d[:q.tail])
+	q.head, q.tail = 0, int64(h+t)
+}
+
+// nextCap get the next buffer size when grow
+func (q *taskQueue) nextCap(oldCap int, newCap int) int {
+	switch {
+	case newCap > oldCap:
+		return newCap
+	case oldCap < qTooLarge: // little size, 2*oldCap=>2^(n+1)
+		// if n!=2^x, then n=>2^(x+1), eg: 3=>6=>8
+		n := q.roundUp(oldCap * 2)
+		if n <= 0 {
+			n = 16
+		}
+		return n
+	default:
+		// large size, grow by qTooLarge, at least +50%*qTooLarge
+		const x = qTooLarge // 8192
+		return ((oldCap+x/2)/x + 1) * x
+	}
+}
+
+// roundUp return if n!=2^x, then n=>2^(x+1), eg: 3=>6=>8
+func (q *taskQueue) roundUp(n int) int {
+	// loop to remove the lowest binary digit 1, eg: 10110=>10100=>10000
+	for t := 2 * (n & (n - 1)); t != 0; t &= (t - 1) {
+		n = t
+	}
+	return n
 }

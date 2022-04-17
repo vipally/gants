@@ -16,7 +16,8 @@ func NewPool(options ...Option) *Pool {
 	return &Pool{
 		opts:   opts,
 		ChExit: make(chan struct{}),
-		chTask: make(chan *task, opts.MaxWorkerCount),
+		chTask: make(chan *task, limitWorkerCount(opts.MaxWorkerCount)),
+		wCond:  sync.NewCond(&sync.Mutex{}),
 	}
 }
 
@@ -24,13 +25,13 @@ func NewPool(options ...Option) *Pool {
 type Pool struct {
 	ChExit chan struct{} // channel for notify exit for outside pool
 
-	wCond  *sync.Cond //Idle worker condition variable
-	chTask chan *task
+	wCond  *sync.Cond // Idle worker condition variable
+	chTask chan *task // channel that execute task immediately
 	tq     taskQueue  // task queue buffer if chTak is full
 	tp     taskPool   // pool of task object
 	wp     workerPool // pool of workers
-	stat   stat
-	opts   *Options
+	stat   stat       //
+	opts   *Options   //
 }
 
 // Push summit a task for scheduled worker.
