@@ -4,10 +4,6 @@
 
 package gants
 
-const (
-	qTooLarge = 8192
-)
-
 // taskQueue is lockfree queue of task
 type taskQueue struct {
 	d    []*task
@@ -62,28 +58,24 @@ func (q *taskQueue) grow(size int) {
 
 // nextCap get the next buffer size when grow
 func (q *taskQueue) nextCap(oldCap int, newCap int) int {
+	const qTooLarge = 4096
 	switch {
 	case newCap > oldCap:
 		return newCap
 	case oldCap < qTooLarge: // little size, 2*oldCap=>2^(n+1)
-		// if n!=2^x, then n=>2^(x+1), eg: 3=>6=>8
-		n := q.roundUp(oldCap * 2)
-		if n <= 0 {
-			n = 16
+		newCap := oldCap * 2
+		// if newCap!=2^x, thenewCap newCap=>2^(x+1), eg: 3=>6=>8
+		// loop to remove the lowest binary digit 1, eg: 10110=>10100=>10000
+		for t := 2 * (newCap & (newCap - 1)); t != 0; t &= (t - 1) {
+			newCap = t
 		}
-		return n
+		if newCap <= 0 {
+			newCap = 16
+		}
+		return newCap
 	default:
 		// large size, grow by qTooLarge, at least +50%*qTooLarge
-		const x = qTooLarge // 8192
+		const x = qTooLarge // 4096
 		return ((oldCap+x/2)/x + 1) * x
 	}
-}
-
-// roundUp return if n!=2^x, then n=>2^(x+1), eg: 3=>6=>8
-func (q *taskQueue) roundUp(n int) int {
-	// loop to remove the lowest binary digit 1, eg: 10110=>10100=>10000
-	for t := 2 * (n & (n - 1)); t != 0; t &= (t - 1) {
-		n = t
-	}
-	return n
 }
